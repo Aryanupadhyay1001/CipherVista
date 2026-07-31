@@ -26,3 +26,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Datasets
+data/raw/
+data/processed/
+
+# Models (keep only if you don't want to upload trained models)
+# models/*.pkl
