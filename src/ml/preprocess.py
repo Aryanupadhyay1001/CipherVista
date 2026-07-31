@@ -78,11 +78,13 @@ class DataPreprocessor:
 
         self.data.dropna(inplace=True)
 
-        self.data["Label"] = self.data["Label"].str.strip()
+        logger.info("Preserving original attack labels...")
 
-        self.data["Label"] = self.data["Label"].apply(
-            lambda x: "Benign" if x.upper() == "BENIGN" else "Attack"
-        )
+        self.data["Label"] = self.data["Label"].astype(str).str.strip()
+
+        self.data["Label"] = self.data["Label"].replace({
+            "BENIGN": "Benign"
+        })
 
         missing_after = self.data.isnull().sum().sum()
 
@@ -90,12 +92,20 @@ class DataPreprocessor:
         logger.info(f"Missing values after cleaning: {missing_after}")
 
     def save_data(self):
-        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
-        self.data.to_csv(self.output_path, index=False)
+        os.makedirs(
+            os.path.dirname(self.output_path),
+            exist_ok=True
+        )
 
-        logger.info(f"Processed dataset saved to:\n{self.output_path}")
+        self.data.to_csv(
+            self.output_path,
+            index=False
+        )
 
+        logger.info(
+            f"Processed dataset saved to:\n{self.output_path}"
+        )
     def summary(self):
         logger.info("========== Dataset Summary ==========")
         logger.info(f"Rows    : {self.data.shape[0]}")

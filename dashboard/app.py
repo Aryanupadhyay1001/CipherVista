@@ -54,6 +54,8 @@ if uploaded_file is not None:
 
             data = response.json()
 
+            attack_breakdown = data["attack_breakdown"]
+
             summary = data["summary"]
             stats = data["statistics"]
             risk = data["risk"]
@@ -82,7 +84,29 @@ if uploaded_file is not None:
             top_left, top_right = st.columns([2, 1])
 
             with top_left:
-                attack_pie_chart(benign, attacks)
+
+                import plotly.express as px
+
+                chart_df = pd.DataFrame(
+                    attack_breakdown.items(),
+                    columns=[
+                        "Attack Type",
+                        "Count"
+                    ]
+                )
+
+                fig = px.pie(
+                    chart_df,
+                    names="Attack Type",
+                    values="Count",
+                    hole=0.55,
+                    title="Attack Distribution"
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
 
             with top_right:
                 st.subheader("📋 Model Information")
@@ -104,18 +128,46 @@ if uploaded_file is not None:
             bottom_left, bottom_right = st.columns([2, 1])
 
             with bottom_left:
-                traffic_bar_chart(benign, attacks)
+
+                import plotly.express as px
+
+                chart_df = pd.DataFrame(
+                    attack_breakdown.items(),
+                    columns=[
+                        "Attack Type",
+                        "Count"
+                    ]
+                )
+
+                fig = px.bar(
+                    chart_df,
+                    x="Attack Type",
+                    y="Count",
+                    color="Attack Type",
+                    title="Attack Breakdown"
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
 
             with bottom_right:
                 st.subheader("🚨 Executive Summary")
 
                 st.success(f"Risk Level: {risk_level}")
 
-                st.write(f"**Attack Traffic:** {stats['attack_percentage']}%")
-                st.write(f"**Benign Traffic:** {stats['benign_percentage']}%")
-                st.write(f"**Total Flows:** {total:,}")
+                st.write("### Top Attacks")
 
-            st.divider()
+                for attack, count in attack_breakdown.items():
+
+                    st.write(
+                        f"**{attack}** : {count:,}"
+                    )
+
+                st.write("")
+                st.write(f"**Total Flows:** {total:,}")
+                st.divider()
 
             threats = pd.DataFrame(data["threats"])
 
@@ -149,9 +201,11 @@ if uploaded_file is not None:
 
             with left:
                 prediction_filter = st.selectbox(
-                    "Prediction",
-                    ["All", "Attack", "Benign"]
-                )
+    "Prediction",
+    ["All"] + sorted(
+        threats["prediction"].unique().tolist()
+    )
+)
 
             with right:
                 severity_filter = st.selectbox(

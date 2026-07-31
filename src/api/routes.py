@@ -51,8 +51,11 @@ async def predict_file(file: UploadFile = File(...)):
 
     total = len(predictions)
 
-    attacks = int((predictions["prediction"] == "Attack").sum())
-    benign = int((predictions["prediction"] == "Benign").sum())
+    benign = int(
+    (predictions["prediction"] == "Benign").sum()
+)
+
+    attacks = total - benign
     anomalies = int(predictions["anomaly"].sum())
 
     attack_percentage = round((attacks / total) * 100, 2)
@@ -79,7 +82,7 @@ async def predict_file(file: UploadFile = File(...)):
     
 
     attacks_df = predictions[
-    predictions["prediction"] == "Attack"
+    predictions["prediction"] != "Benign"
 ].sort_values(
     by=["confidence", "anomaly_score"],
     ascending=[False, True]
@@ -97,6 +100,15 @@ async def predict_file(file: UploadFile = File(...)):
         [attacks_df, benign_df],
         ignore_index=True
     )
+
+    attack_breakdown = (
+    predictions[
+        predictions["prediction"] != "Benign"
+    ]
+    ["prediction"]
+    .value_counts()
+    .to_dict()
+)
 
     return {
         "filename": file.filename,
@@ -116,8 +128,14 @@ async def predict_file(file: UploadFile = File(...)):
             "color": risk_color
         },
         "threats": threats.to_dict("records"),
-"top_attacks": attacks_df.sort_values(
-    by="confidence",
-    ascending=False
-).head(10).to_dict("records")
+"top_attacks": (
+    attacks_df
+    .sort_values(
+        by=["confidence", "anomaly_score"],
+        ascending=[False, True]
+    )
+    .head(10)
+    .to_dict("records")
+),
+"attack_breakdown": attack_breakdown
     }

@@ -2,6 +2,12 @@ import os
 import logging
 import joblib
 import pandas as pd
+import numpy as np
+
+from sklearn.preprocessing import (
+    LabelEncoder,
+    StandardScaler
+)
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -31,6 +37,9 @@ class ClassifierTrainer:
 
         self.data = None
         self.model = None
+
+        self.scaler = None
+        self.label_encoder = None
 
     def load_data(self):
 
@@ -71,8 +80,61 @@ class ClassifierTrainer:
 
     def split_data(self):
 
+        logger.info("Preparing training data...")
+
+        columns_to_drop = [
+            "Flow ID",
+            "Source IP",
+            "Destination IP",
+            "Timestamp"
+        ]
+
+        self.data.drop(
+            columns=[c for c in columns_to_drop if c in self.data.columns],
+            inplace=True
+        )
+
+        self.label_encoder = LabelEncoder()
+
+        self.data["Label"] = self.label_encoder.fit_transform(
+            self.data["Label"]
+        )
+
+        os.makedirs(
+            "models",
+            exist_ok=True
+        )
+
+        joblib.dump(
+            self.label_encoder,
+            "models/label_encoder.pkl"
+        )
+
         X = self.data.drop("Label", axis=1)
+
         y = self.data["Label"]
+
+        X = X.replace([np.inf, -np.inf], np.nan)
+
+        X = X.apply(
+            pd.to_numeric,
+            errors="coerce"
+        )
+
+        X = X.fillna(
+            X.median()
+        )
+
+        self.scaler = StandardScaler()
+
+        self.feature_names = X.columns.tolist()
+
+        X = self.scaler.fit_transform(X)
+
+        joblib.dump(
+            self.scaler,
+            "models/scaler.pkl"
+        )
 
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X,
@@ -88,6 +150,10 @@ class ClassifierTrainer:
 
         logger.info(
             f"Testing samples : {len(self.X_test)}"
+        )
+
+        logger.info(
+            f"Classes : {list(self.label_encoder.classes_)}"
         )
 
     def train(self):
@@ -125,15 +191,30 @@ class ClassifierTrainer:
         )
 
         logger.info(
-            f"Precision : {precision_score(self.y_test, predictions):.4f}"
+            f"Precision : {precision_score(
+    self.y_test,
+    predictions,
+    average="weighted",
+    zero_division=0
+):.4f}"
         )
 
         logger.info(
-            f"Recall    : {recall_score(self.y_test, predictions):.4f}"
+            f"Recall    : {recall_score(
+    self.y_test,
+    predictions,
+    average="weighted",
+    zero_division=0
+):.4f}"
         )
 
         logger.info(
-            f"F1 Score  : {f1_score(self.y_test, predictions):.4f}"
+            f"F1 Score  : {f1_score(
+    self.y_test,
+    predictions,
+    average="weighted",
+    zero_division=0
+):.4f}"
         )
 
         logger.info("")
@@ -149,15 +230,21 @@ class ClassifierTrainer:
 
         logger.info(
             "\n%s",
-            classification_report(self.y_test, predictions)
+            classification_report(
+    self.y_test,
+    predictions,
+    labels=range(len(self.label_encoder.classes_)),
+    target_names=self.label_encoder.classes_,
+    zero_division=0
+)
         )
 
     def feature_importance(self):
 
         importance = pd.DataFrame({
-            "Feature": self.X_train.columns,
-            "Importance": self.model.feature_importances_
-        })
+    "Feature": self.feature_names,
+    "Importance": self.model.feature_importances_
+})
 
         importance = importance.sort_values(
             by="Importance",
@@ -206,7 +293,7 @@ class ClassifierTrainer:
 if __name__ == "__main__":
 
     trainer = ClassifierTrainer(
-        data_path="data/processed/final_dataset.csv",
+        data_path="data/processed/processed_dataset.csv",
         model_path="models/random_forest.pkl"
     )
 

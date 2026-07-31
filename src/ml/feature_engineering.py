@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 import numpy as np
 
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,11 +23,12 @@ class FeatureEngineer:
         self.data = None
 
     def load_data(self):
+
         logger.info("Loading processed dataset...")
 
         self.data = pd.read_csv(
             self.input_path,
-            low_memory=False
+            engine="python"
         )
 
         self.data.columns = self.data.columns.str.strip()
@@ -54,12 +55,31 @@ class FeatureEngineer:
 
     def encode_label(self):
 
-        logger.info("Encoding Label column...")
+        logger.info("Encoding attack labels...")
 
-        self.data["Label"] = self.data["Label"].map({
-            "Benign": 0,
-            "Attack": 1
-        })
+        encoder = LabelEncoder()
+
+        self.data["Label"] = encoder.fit_transform(
+            self.data["Label"]
+        )
+
+        os.makedirs(
+            os.path.dirname("models/label_encoder.pkl"),
+            exist_ok=True
+        )
+
+        joblib.dump(
+            encoder,
+            "models/label_encoder.pkl"
+        )
+
+        logger.info(
+            f"{len(encoder.classes_)} classes encoded."
+        )
+
+        logger.info(
+            f"Classes: {list(encoder.classes_)}"
+        )
 
     def scale_features(self):
 
@@ -114,12 +134,9 @@ class FeatureEngineer:
             index=False
         )
 
-        pkl_path = self.output_path.replace(".csv", ".pkl")
-
-        self.data.to_pickle(pkl_path)
-
-        logger.info(f"CSV saved to {self.output_path}")
-        logger.info(f"Pickle saved to {pkl_path}")
+        logger.info(
+            "Feature engineered dataset saved."
+        )
 
     def summary(self):
 
@@ -147,19 +164,11 @@ class FeatureEngineer:
         )
 
         if "Label" in df.columns:
-
-            df["Label"] = df["Label"].map({
-                "Benign": 0,
-                "Attack": 1
-            })
-
             X = df.drop("Label", axis=1)
-            y = df["Label"]
-
         else:
-
             X = df
-            y = None
+
+        y = None
 
         X = X.replace([np.inf, -np.inf], np.nan)
         X = X.apply(pd.to_numeric, errors="coerce")
@@ -174,7 +183,9 @@ class FeatureEngineer:
             f"Scaling {len(X.columns)} features."
         )
 
-        scaler = joblib.load(self.scaler_path)
+        scaler = joblib.load(
+            self.scaler_path
+        )
 
         X_scaled = scaler.transform(X)
 
