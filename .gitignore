@@ -58,7 +58,7 @@ data/
 
 
 # Generated reports and analysis data
-reports/
+/reports/
 
 # Windows metadata
 desktop.ini
