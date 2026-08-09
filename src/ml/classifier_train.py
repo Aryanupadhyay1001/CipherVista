@@ -4,6 +4,8 @@ import joblib
 import pandas as pd
 import numpy as np
 
+from src.ml.feature_schema import FEATURE_COLUMNS
+
 from sklearn.preprocessing import (
     LabelEncoder,
     StandardScaler
@@ -110,7 +112,21 @@ class ClassifierTrainer:
             "models/label_encoder.pkl"
         )
 
-        X = self.data.drop("Label", axis=1)
+        
+
+        missing = [
+            column
+            for column in FEATURE_COLUMNS
+            if column not in self.data.columns
+        ]
+
+        if missing:
+
+            raise ValueError(
+                f"Missing required features: {missing}"
+            )
+
+        X = self.data[FEATURE_COLUMNS]
 
         y = self.data["Label"]
 
@@ -165,7 +181,7 @@ class ClassifierTrainer:
             class_weight="balanced",
             random_state=42,
             n_jobs=-1,
-            verbose=1
+            verbose=0
         )
 
         self.model.fit(

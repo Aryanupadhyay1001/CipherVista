@@ -3,6 +3,7 @@ import logging
 import joblib
 import pandas as pd
 
+from src.ml.feature_schema import FEATURE_COLUMNS
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import (
     confusion_matrix,
@@ -35,7 +36,10 @@ class ModelTrainer:
 
         logger.info("Loading feature dataset...")
 
-        self.data = pd.read_pickle(self.data_path)
+        self.data = pd.read_csv(
+            self.data_path,
+            low_memory=False
+        )
 
         logger.info(
             f"Dataset loaded ({self.data.shape[0]} rows)."
@@ -45,14 +49,16 @@ class ModelTrainer:
 
         logger.info("Training Isolation Forest...")
 
-        X = self.data.drop("Label", axis=1)
+        
+
+        X = self.data[FEATURE_COLUMNS]
 
         self.model = IsolationForest(
             n_estimators=200,
             contamination=0.02,
             random_state=42,
             n_jobs=-1,
-            verbose=1
+            verbose=0
         )
 
         self.model.fit(X)
@@ -63,7 +69,7 @@ class ModelTrainer:
 
         logger.info("Evaluating model...")
 
-        X = self.data.drop("Label", axis=1)
+        X = self.data[FEATURE_COLUMNS]
 
         y_true = self.data["Label"]
 
@@ -79,15 +85,15 @@ class ModelTrainer:
         )
 
         logger.info(
-            f"Precision : {precision_score(y_true, y_pred):.4f}"
+            f"Precision : {precision_score(y_true, y_pred, average='weighted', zero_division=0):.4f}"
         )
 
         logger.info(
-            f"Recall    : {recall_score(y_true, y_pred):.4f}"
+            f"Recall : {recall_score(y_true, y_pred, average='weighted', zero_division=0):.4f}"
         )
 
         logger.info(
-            f"F1 Score  : {f1_score(y_true, y_pred):.4f}"
+            f"F1 Score : {f1_score(y_true, y_pred, average='weighted', zero_division=0):.4f}"
         )
 
         logger.info("")
@@ -133,8 +139,8 @@ class ModelTrainer:
 if __name__ == "__main__":
 
     trainer = ModelTrainer(
-    data_path="data/processed/final_dataset.pkl",
-    model_path="models/isolation_forest.pkl"
-)
+        data_path="data/processed/final_dataset.csv",
+        model_path="models/isolation_forest.pkl"
+    )
 
     trainer.run()

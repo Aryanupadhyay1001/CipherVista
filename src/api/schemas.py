@@ -12,3 +12,5 @@ class PredictionResponse(BaseModel):
     attack_type: str
     confidence: float
     severity: str
+
+    

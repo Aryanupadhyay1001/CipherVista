@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from src.ml.feature_schema import FEATURE_COLUMNS
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,17 +25,41 @@ class FeatureEngineer:
 
     def load_data(self):
 
-        logger.info("Loading processed dataset...")
+        logger.info("Loading processed dataset in chunks...")
 
-        self.data = pd.read_csv(
-            self.input_path,
-            engine="python"
+        chunks = []
+
+        chunk_size = 100000
+        sample_fraction = 0.18
+
+        for i, chunk in enumerate(
+            pd.read_csv(
+                self.input_path,
+                chunksize=chunk_size,
+                low_memory=False
+            )
+        ):
+
+            chunk.columns = chunk.columns.str.strip()
+
+            sampled_chunk = chunk.sample(
+                frac=sample_fraction,
+                random_state=42
+            )
+
+            chunks.append(sampled_chunk)
+
+            logger.info(
+                f"Processed chunk {i+1}"
+            )
+
+        self.data = pd.concat(
+            chunks,
+            ignore_index=True
         )
 
-        self.data.columns = self.data.columns.str.strip()
-
         logger.info(
-            f"Dataset loaded ({self.data.shape[0]} rows)."
+            f"Sampled Dataset : {self.data.shape[0]} rows"
         )
 
     def remove_unused_columns(self):
@@ -85,7 +110,7 @@ class FeatureEngineer:
 
         logger.info("Scaling numerical features...")
 
-        X = self.data.drop("Label", axis=1)
+        X = self.data[FEATURE_COLUMNS]
         y = self.data["Label"]
 
         X = X.replace([np.inf, -np.inf], np.nan)
@@ -164,9 +189,26 @@ class FeatureEngineer:
         )
 
         if "Label" in df.columns:
-            X = df.drop("Label", axis=1)
+
+            y = df["Label"]
+
         else:
-            X = df
+
+            y = None
+
+        missing = [
+            column
+            for column in FEATURE_COLUMNS
+            if column not in df.columns
+        ]
+
+        if missing:
+
+            raise ValueError(
+                f"Missing required features: {missing}"
+            )
+
+        X = df[FEATURE_COLUMNS]
 
         y = None
 

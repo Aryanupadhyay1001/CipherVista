@@ -1,267 +1,119 @@
-import pandas as pd
-import streamlit as st
+import warnings
+from pathlib import Path
 import requests
-
+import streamlit as st
 from styles import load_css
-from components import hero, attack_pie_chart, traffic_bar_chart
+
+warnings.filterwarnings("ignore", message="X has feature names*")
+
+# ----------------- ASSETS & CONFIG -----------------
+ROOT = Path(__file__).resolve().parent.parent
+FAVICON_PATH = ROOT / "assets" / "favicon.ico"
+API_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(
-    page_title="CipherVista",
-    page_icon="🛡",
+    page_title="CipherVista | SOC Command Center",
+    page_icon=str(FAVICON_PATH) if FAVICON_PATH.exists() else "🛡",
     layout="wide"
 )
 
 st.markdown(load_css(), unsafe_allow_html=True)
 
-hero()
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-st.markdown("""
-### 📂 Upload Network Traffic
-
-Upload your network traffic dataset for AI-powered threat detection.
-
-**Supported format:** CSV
-
-**Maximum file size:** 200 MB
-""")
-
-uploaded_file = st.file_uploader(
-    "",
-    type=["csv"],
-    label_visibility="collapsed"
-)
-
-if uploaded_file is not None:
-
-    if st.button("🔍 Analyze Threats"):
-
-        with st.spinner("Running AI Threat Analysis..."):
-
-            response = requests.post(
-                "http://127.0.0.1:8000/predict-file",
-                files={
-                    "file": (
-                        uploaded_file.name,
-                        uploaded_file,
-                        "text/csv"
-                    )
-                }
-            )
-
-        if response.status_code == 200:
-
-            data = response.json()
-
-            attack_breakdown = data["attack_breakdown"]
-
-            summary = data["summary"]
-            stats = data["statistics"]
-            risk = data["risk"]
-
-            total = summary["total_records"]
-            benign = summary["benign"]
-            attacks = summary["attacks"]
-            anomalies = summary["anomalies"]
-
-            confidence = stats["average_confidence"]
-            risk_level = risk["level"]
-
-            st.success("✅ Analysis Completed Successfully")
-
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
-
-            c1.metric("Total Flows", f"{total:,}")
-            c2.metric("Benign", f"{benign:,}")
-            c3.metric("Attacks", f"{attacks:,}")
-            c4.metric("Anomalies", f"{anomalies:,}")
-            c5.metric("Average Prediction Confidence", f"{confidence}%")
-            c6.metric("Risk", risk_level)
-
-            st.divider()
-
-            top_left, top_right = st.columns([2, 1])
-
-            with top_left:
-
-                import plotly.express as px
-
-                chart_df = pd.DataFrame(
-                    attack_breakdown.items(),
-                    columns=[
-                        "Attack Type",
-                        "Count"
-                    ]
-                )
-
-                fig = px.pie(
-                    chart_df,
-                    names="Attack Type",
-                    values="Count",
-                    hole=0.55,
-                    title="Attack Distribution"
-                )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True
-                )
-
-            with top_right:
-                st.subheader("📋 Model Information")
-
-                st.write("**Classifier**")
-                st.write("Random Forest")
-
-                st.write("**Anomaly Detector**")
-                st.write("Isolation Forest")
-
-                st.write("**Dataset**")
-                st.write("CICIDS2017")
-
-                st.write("**Average Prediction Confidence**")
-                st.write(f"{confidence}%")
-
-            st.divider()
-
-            bottom_left, bottom_right = st.columns([2, 1])
-
-            with bottom_left:
-
-                import plotly.express as px
-
-                chart_df = pd.DataFrame(
-                    attack_breakdown.items(),
-                    columns=[
-                        "Attack Type",
-                        "Count"
-                    ]
-                )
-
-                fig = px.bar(
-                    chart_df,
-                    x="Attack Type",
-                    y="Count",
-                    color="Attack Type",
-                    title="Attack Breakdown"
-                )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True
-                )
-
-            with bottom_right:
-                st.subheader("🚨 Executive Summary")
-
-                st.success(f"Risk Level: {risk_level}")
-
-                st.write("### Top Attacks")
-
-                for attack, count in attack_breakdown.items():
-
-                    st.write(
-                        f"**{attack}** : {count:,}"
-                    )
-
-                st.write("")
-                st.write(f"**Total Flows:** {total:,}")
-                st.divider()
-
-            threats = pd.DataFrame(data["threats"])
-
-            # def severity(row):
-            #     if row["prediction"] == "Attack" and row["anomaly"]:
-            #         return "Critical"
-            #     elif row["prediction"] == "Attack":
-            #         return "High"
-            #     return "Safe"
-
-            # threats["Severity"] = threats.apply(severity, axis=1)
-
-            critical_count = len(threats[threats["Severity"] == "Critical"])
-            high_count = len(threats[threats["Severity"] == "High"])
-            safe_count = len(threats[threats["Severity"] == "Safe"])
-
-            st.subheader("📊 Threat Statistics")
-
-            m1, m2, m3, m4 = st.columns(4)
-
-            m1.metric("🚨 Critical", critical_count)
-            m2.metric("⚠️ High", high_count)
-            m3.metric("🟢 Safe", safe_count)
-            m4.metric("📈 Avg Confidence", f"{confidence}%")
-
-            st.divider()
-
-            st.subheader("🔍 Threat Investigation")
-
-            left, right = st.columns(2)
-
-            with left:
-                prediction_filter = st.selectbox(
-    "Prediction",
-    ["All"] + sorted(
-        threats["prediction"].unique().tolist()
-    )
-)
-
-            with right:
-                severity_filter = st.selectbox(
-                    "Severity",
-                    ["All", "Critical", "High", "Safe"]
-                )
-
-            filtered = threats.copy()
-
-            if prediction_filter != "All":
-                filtered = filtered[
-                    filtered["prediction"] == prediction_filter
-                ]
-
-            if severity_filter != "All":
-                filtered = filtered[
-                    filtered["Severity"] == severity_filter
-                ]
-
-            st.dataframe(
-                filtered,
-                use_container_width=True,
-                hide_index=True
-            )
-
-            st.download_button(
-                "📥 Download Investigation CSV",
-                filtered.to_csv(index=False),
-                file_name="ciphervista_investigation.csv",
-                mime="text/csv"
-            )
-            st.divider()
-
-            st.subheader("🔥 Highest Confidence Attacks")
-
-            top_attacks = pd.DataFrame(data["top_attacks"])
-
-            # top_attacks["Severity"] = top_attacks.apply(severity, axis=1)
-
-            if top_attacks.empty:
-                st.info("No attack records found.")
-            else:
-                display = top_attacks[
-                    [
-                        "prediction",
-                        "Severity",
-                        "confidence",
-                        "anomaly",
-                        "anomaly_score"
-                    ]
-                ]
-
-                st.dataframe(
-                    display,
-                    use_container_width=True,
-                    hide_index=True
-                )
-        else:
-            st.error(response.text)
+# ----------------- SESSION & TOKEN SYNC -----------------
+query_token = st.query_params.get("token")
+if query_token:
+    if isinstance(query_token, list):
+        query_token = query_token[0]
+    st.session_state["access_token"] = query_token
+
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
+
+if "analysis" not in st.session_state:
+    st.session_state.analysis = None
+
+# ----------------- AUTHENTICATION GATE -----------------
+if st.session_state["access_token"] is None:
+    col1, col2, col3 = st.columns([1, 1.3, 1])
+    with col2:
+        st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
+        st.title("🔐 Welcome to CipherVista")
+        st.markdown("Please log in or create an account to access the AI Threat Intelligence Platform.")
+        
+        tab1, tab2 = st.tabs(["Login", "Sign Up"])
+        
+        with tab1:
+            st.subheader("Login")
+            login_email = st.text_input("Email", key="login_email")
+            login_password = st.text_input("Password", type="password", key="login_password")
+            
+            if st.button("Login", type="primary", use_container_width=True):
+                if login_email and login_password:
+                    try:
+                        response = requests.post(
+                            f"{API_URL}/auth/login", 
+                            json={"email": login_email, "password": login_password}
+                        )
+                        if response.status_code == 200:
+                            token_data = response.json()
+                            token = token_data["access_token"]
+                            
+                            st.session_state["access_token"] = token
+                            st.query_params["token"] = token
+                            
+                            st.success("Login successful! Loading Command Center...")
+                            st.rerun()
+                        else:
+                            st.error("Invalid email or password.")
+                    except requests.RequestException:
+                        st.error("Cannot connect to backend. Make sure FastAPI is running!")
+                else:
+                    st.warning("Please enter both email and password.")
+
+        with tab2:
+            st.subheader("Create an Account")
+            reg_name = st.text_input("Full Name", key="reg_name")
+            reg_email = st.text_input("Email", key="reg_email")
+            reg_password = st.text_input("Password", type="password", key="reg_password")
+            reg_confirm = st.text_input("Confirm Password", type="password", key="reg_confirm")
+            
+            if st.button("Sign Up", type="primary", use_container_width=True):
+                if reg_password != reg_confirm:
+                    st.error("Passwords do not match!")
+                elif reg_name and reg_email and reg_password:
+                    try:
+                        response = requests.post(
+                            f"{API_URL}/auth/register", 
+                            json={"name": reg_name, "email": reg_email, "password": reg_password}
+                        )
+                        if response.status_code == 200:
+                            st.success("Account created successfully! You can now log in.")
+                        else:
+                            st.error(f"Error: {response.json().get('detail', 'Could not create account')}")
+                    except requests.RequestException:
+                        st.error("Cannot connect to backend. Make sure FastAPI is running!")
+                else:
+                    st.warning("Please fill out all fields.")
+    
+    # Halt script execution here so dashboard code below never runs while logged out
+    st.stop()
+
+# ----------------- MODERN NAVIGATION (PROTECTED AREA) -----------------
+# Only runs when st.session_state["access_token"] is valid
+dashboard_page = st.Page("pages/Dashboard.py", title="Dashboard", icon="📊")
+live_monitor_page = st.Page("pages/live_monitoring.py", title="Live Monitor", icon="⚡")
+threat_intel_page = st.Page("pages/threat_intelligence.py", title="Threat Intelligence", icon="🌐")
+dataset_analysis_page = st.Page("pages/dataset_analysis.py", title="Dataset Analysis", icon="📁")
+reports_page = st.Page("pages/reports.py", title="Reports", icon="📋")
+settings_page = st.Page("pages/settings.py", title="Settings", icon="⚙️")
+
+pg = st.navigation([
+    dashboard_page,
+    live_monitor_page,
+    threat_intel_page,
+    dataset_analysis_page,
+    reports_page,
+    settings_page
+])
+
+pg.run()
