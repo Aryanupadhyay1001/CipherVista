@@ -1,3 +1,4 @@
+import os
 import warnings
 from pathlib import Path
 import requests
@@ -9,7 +10,7 @@ warnings.filterwarnings("ignore", message="X has feature names*")
 # ----------------- ASSETS & CONFIG -----------------
 ROOT = Path(__file__).resolve().parent.parent
 FAVICON_PATH = ROOT / "assets" / "favicon.ico"
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 st.set_page_config(
     page_title="CipherVista | SOC Command Center",
