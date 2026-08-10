@@ -5,7 +5,8 @@ import plotly.express as px
 # from datetime import datetime
 from datetime import datetime
 from pathlib import Path
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path("/tmp/ciphervista")
+BASE_DIR.mkdir(parents=True, exist_ok=True)
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -62,9 +63,7 @@ def generate_pdf_report(
 
     
 
-    output_path = str(
-        Path(__file__).resolve().parents[2] / "CipherVista_Report.pdf"
-    )
+    output_path = str(BASE_DIR / "CipherVista_Report.pdf")
 
     doc = SimpleDocTemplate(
         output_path,

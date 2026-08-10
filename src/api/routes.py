@@ -33,8 +33,8 @@ predictor = ThreatPredictor(
     classifier_model
 )
 
-REPORTS_DIR = Path("reports")
-REPORTS_DIR.mkdir(exist_ok=True)
+REPORTS_DIR = Path("/tmp/reports")
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.post("/predict-file")
