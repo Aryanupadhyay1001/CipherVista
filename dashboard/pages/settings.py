@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import requests
 from components import render_sidebar
@@ -15,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 # ----------------- SESSION & TOKEN SYNC -----------------
 if "token" in st.query_params and not st.session_state.get("access_token"):

@@ -1,3 +1,4 @@
+import os
 import warnings
 import base64
 from pathlib import Path
@@ -57,7 +58,7 @@ st.markdown(load_css(), unsafe_allow_html=True)
 # ----------------- ASSETS & CONFIG -----------------
 ROOT = Path(__file__).resolve().parent.parent.parent
 ASSETS = ROOT / "assets"
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 def get_image_base64(image_path):
     if image_path.exists():

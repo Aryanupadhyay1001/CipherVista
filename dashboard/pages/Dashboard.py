@@ -1,3 +1,4 @@
+import os
 import warnings
 import base64
 from pathlib import Path
@@ -121,7 +122,7 @@ def get_image_base64(image_path):
 logo_base64 = get_image_base64(ASSETS / "favicon.ico")
 logo_html_tag = f'<img src="data:image/x-icon;base64,{logo_base64}" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;" />' if logo_base64 else '<span style="font-size: 28px;">🛡️</span>'
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 # ----------------- SESSION STATE INIT -----------------
 if "access_token" not in st.session_state:

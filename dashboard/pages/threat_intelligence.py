@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import requests
 import pandas as pd
@@ -45,7 +46,7 @@ with st.sidebar:
 # Load universal CSS from styles.py
 st.markdown(load_css(), unsafe_allow_html=True)
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 # ----------------- AUTH GUARD -----------------
 if not st.session_state.get("access_token"):
